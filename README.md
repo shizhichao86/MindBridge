@@ -15,6 +15,34 @@
 - MCP 工具服务：暴露 Excel 报告写入和风险通知工具，后端高风险后处理通过 MCP client 调用这些工具。
 - RAG 评测：Recall@K、Precision@K、MRR、NDCG@K、HitRate。
 
+## 架构概览
+
+```
+                          ┌──────────────────────────────────────────┐
+                          │              数据闭环                    │
+                          │  MySQL(全量)  Redis(24h短期)  Chroma(向量) │
+                          │  Excel(台账)  邮件(SMTP预警)             │
+                          └──────────────────────────────────────────┘
+  ┌──────┐  HTTP   ┌──────────┐  call  ┌────────────────────┐  run()  ┌─────────────────────────┐
+  │ 浏览器 │ ──────→ │ FastAPI   │ ──────→ │ MindBridgeAgentHarness │ ───────→ │ EventDrivenAgentRuntime │
+  │(学生) │ ←─SSE─ │ (routes)  │  sync  │  编排:脱敏/落库/工具   │  sync   │ → Coordinator + 5 Agent│
+  └──────┘         └──────────┘        └────────────────────┘         └─────────────────────────┘
+```
+
+**请求生命周期**：鉴权 → 脱敏 → Agent 协作(intent→risk→context→response→safety review) → SSE 流式输出 → 工具派发(异步解耦)
+
+**五个智能体职责**：
+
+| Agent | 能力 | 行为 |
+|-------|------|------|
+| CoordinatorAgent | 协调 | 建根任务、推导缺失任务、认领排序、终态接受（不占工人槽） |
+| UnderstandingAgent | 意图识别 | 三层判定：关键词 → 通用词 → LLM，输出 CHAT/CONSULT/RISK |
+| SafetyAgent | 安全审查 | 独立风险评估 + 审核回复，可 SAFETY_OVERRIDE 强制 HIGH |
+| ContextAgent | 上下文 | 条件激活（非闲聊/非低风险），加载历史+RAG+技能上下文 |
+| ResponseAgent | 生成回复 | normal_chat vs support 双模式 prompt 组装，提交 Safety 审查 |
+
+> 📖 详见 [`docs/02_AGENT_RUNTIME.md`](docs/02_AGENT_RUNTIME.md) — 多智能体运行时深度分析
+
 ## 技术栈
 
 ```text
@@ -42,26 +70,37 @@ Excel 台账：openpyxl
 
 ```text
 app/
-├── agents/          # 事件驱动多 Agent runtime
-├── api/             # FastAPI 路由
-├── core/            # 配置、数据库、安全、启动初始化
-├── knowledge/       # 内置校园心理知识库
-├── mcp_tools/       # MCP 工具服务
-├── models/          # SQLAlchemy 实体
-├── rag_eval/        # RAG 评测脚本和数据集
+├── agents/          # 事件驱动多 Agent runtime（核心）
+│   ├── events.py       # 不可变黑板、事件、任务、Artifact
+│   ├── coordinator.py  # 认领式协调器
+│   ├── autonomous.py   # 五个自治智能体
+│   └── harness.py      # MindBridgeAgentHarness 编排器
+├── api/             # FastAPI 路由（认证+委派）
+├── core/            # 配置(pydantic-settings)、DB、安全、启动
+├── services/        # AI、RAG、评估、工具队列、记忆、隐私
+├── mcp_tools/       # MCP 工具服务（6 个工具）
+├── models/          # 12 个 SQLAlchemy ORM 实体
 ├── schemas/         # Pydantic DTO
-├── services/        # AI、聊天、知识库、评估、报告、工具服务
-└── static/          # 原生前端页面
+├── knowledge/       # 内置 11 篇校园心理知识库
+├── static/          # 原生前端（HTML/CSS/JS）
+├── rag_eval/        # RAG 评测脚本与数据集
+└── harness/         # 工程自检 harness（6 个套件）
+
+docs/                # 学习文档（面试导向）
+├── 01_ARCHITECTURE.md        # 系统架构
+├── 02_AGENT_RUNTIME.md       # 多智能体运行时（面试核心）
+├── 03_RAG_AND_KNOWLEDGE.md   # 混合检索系统
+├── 04_RISK_ASSESSMENT.md     # 风险评估硬守卫
+├── 05_TOOL_SYSTEM.md         # 工具队列与治理
+├── 06_LEARNING_PATH.md       # 学习路线图（10 天）
+└── 07_INTERVIEW_QNA.md       # 30 道面试问答
 
 models/mindbridge-qwen2.5-7b-ft/
-├── Modelfile        # Ollama 模型定义
-└── README.md        # GGUF 模型放置说明
+└── Modelfile        # Ollama 模型定义（GGUF 不入库）
 
-scripts/
-├── run-dev.sh
-├── start-ollama.sh
-├── create-finetuned-model.sh
-└── package-release.sh
+skills/              # 7 个内置 Skill（SKILL.md）
+scripts/             # 开发脚本
+tests/               # unittest 测试
 ```
 
 ## Agent loop
@@ -84,6 +123,37 @@ TURN_STARTED
 - `SafetyAgent`：独立评估风险，必要时发布 `SAFETY_OVERRIDE`，并审查候选回复。
 - `ContextAgent`：按需聚合 Redis / MySQL 记忆、RAG 检索结果和 Skill 约束。
 - `ResponseAgent`：根据黑板 artifact 生成候选回复 prompt，等待安全审查和采纳。
+
+## 快速开始
+
+### 模式一：Mock 模式（零依赖，5 分钟可跑）
+
+无需 MySQL/Redis/AI Key，用 SQLite + 模拟 AI 密闭运行：
+
+```bash
+cp .env.example .env
+# 编辑 .env: AI_PROVIDER=mock, DATABASE_URL=sqlite:///./data/mindbridge.db, KNOWLEDGE_VECTOR_ENABLED=false
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
+```
+
+访问 http://127.0.0.1:8080，用 `student / student123` 或 `admin / admin123` 登录。
+
+### 模式二：Docker Compose（MySQL + Redis + App 一键启动）
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+### 模式三：Ollama 本地微调模型
+
+```bash
+./scripts/start-ollama.sh
+AI_PROVIDER=ollama ./scripts/run-dev.sh
+```
+
+> 📖 **学习导航**：配套学习文档见 [`docs/`](docs/) 目录。推荐按 [`docs/06_LEARNING_PATH.md`](docs/06_LEARNING_PATH.md) 的 10 天路线学习，面试前回顾 [`docs/07_INTERVIEW_QNA.md`](docs/07_INTERVIEW_QNA.md) 的 30 道问答。
 
 ## 安装依赖
 
@@ -127,8 +197,8 @@ REDIS_MEMORY_MAX_MESSAGES=40
 
 仓库提供 `Dockerfile` 和 `docker-compose.yml`，会启动：
 
-- `mysql`：MySQL 8.4，容器内端口 `3306`，宿主机映射 `13306`
-- `redis`：Redis 7，容器内端口 `6379`，宿主机映射 `16379`
+- `mysql`：MySQL 8.0，容器内端口 `3306`，宿主机映射 `13306`
+- `redis`：Redis 7.2，容器内端口 `6379`，宿主机映射 `16379`
 - `app`：MindBridge FastAPI 服务，宿主机端口 `8080`
 
 默认配置会让应用容器访问宿主机 Ollama：
