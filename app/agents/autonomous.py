@@ -167,7 +167,7 @@ class UnderstandingAgent(BaseAutonomousAgent):
                 *PromptTemplates.intent_prompt([], text),
                 AiMessage(role="system", content=f"{self.profile.system_prompt}\n私有记忆：\n{memory_context or '无'}"),
             ]
-            label = self.client().complete(messages).upper()
+            label = self.client().complete(messages, max_tokens=10, temperature=0).upper()
             if "RISK" in label:
                 return IntentType.RISK
             if "CONSULT" in label:
@@ -393,7 +393,7 @@ class ContextAgent(BaseAutonomousAgent):
 
     def _rewrite_query(self, memory_brief: str, model_input: str) -> str:
         try:
-            query = self.client().complete([
+            query = self.client().complete(max_tokens=30, temperature=0, messages=[
                 AiMessage(role="system", content=f"{self.profile.system_prompt}\n把学生输入改写成适合检索校园心理知识库的中文查询词，只输出查询词。"),
                 AiMessage(role="user", content=f"记忆摘要：\n{memory_brief}\n\n当前输入：\n{model_input}"),
             ]).strip()

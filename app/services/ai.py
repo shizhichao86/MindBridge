@@ -63,45 +63,51 @@ class AiClient:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    def complete(self, messages: list[AiMessage]) -> str:
+    def complete(self, messages: list[AiMessage], max_tokens: int | None = None, temperature: float | None = None) -> str:
         provider = self.settings.ai_provider.lower()
         if provider == "ollama":
-            return self._ollama(messages, stream=False)
+            return self._ollama(messages, stream=False, max_tokens=max_tokens)
         if provider == "openai":
-            return self._openai(messages, stream=False)
+            return self._openai(messages, stream=False, max_tokens=max_tokens, temperature=temperature)
         return self._mock(messages)
 
-    async def stream(self, messages: list[AiMessage]):
+    async def stream(self, messages: list[AiMessage], max_tokens: int | None = None, temperature: float | None = None):
         provider = self.settings.ai_provider.lower()
         if provider == "ollama":
-            async for token in self._ollama_stream(messages):
+            async for token in self._ollama_stream(messages, max_tokens=max_tokens):
                 yield token
             return
         if provider == "openai":
-            async for token in self._openai_stream(messages):
+            async for token in self._openai_stream(messages, max_tokens=max_tokens, temperature=temperature):
                 yield token
             return
         text = self._mock(messages)
         for chunk in split_text(text, 12):
             yield chunk
 
-    def _ollama(self, messages: list[AiMessage], stream: bool) -> str:
+    def _ollama(self, messages: list[AiMessage], stream: bool, max_tokens: int | None = None) -> str:
         payload = {
             "model": self.settings.ollama_model,
             "messages": [m.model_dump() for m in messages],
             "stream": stream,
-            "options": {"temperature": self.settings.ai_temperature, "num_predict": self.settings.ai_max_tokens},
+            "options": {
+                "temperature": self.settings.ai_temperature,
+                "num_predict": max_tokens or self.settings.ai_max_tokens,
+            },
         }
         response = httpx.post(f"{self.settings.ollama_base_url}/api/chat", json=payload, timeout=60)
         response.raise_for_status()
         return response.json()["message"]["content"]
 
-    async def _ollama_stream(self, messages: list[AiMessage]):
+    async def _ollama_stream(self, messages: list[AiMessage], max_tokens: int | None = None):
         payload = {
             "model": self.settings.ollama_model,
             "messages": [m.model_dump() for m in messages],
             "stream": True,
-            "options": {"temperature": self.settings.ai_temperature, "num_predict": self.settings.ai_max_tokens},
+            "options": {
+                "temperature": self.settings.ai_temperature,
+                "num_predict": max_tokens or self.settings.ai_max_tokens,
+            },
         }
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream("POST", f"{self.settings.ollama_base_url}/api/chat", json=payload) as response:
@@ -114,27 +120,32 @@ class AiClient:
                     if token:
                         yield token
 
-    def _openai(self, messages: list[AiMessage], stream: bool) -> str:
+    def _openai(self, messages: list[AiMessage], stream: bool, max_tokens: int | None = None, temperature: float | None = None) -> str:
         headers = {"Authorization": f"Bearer {self.settings.openai_api_key}"}
         payload = {
             "model": self.settings.openai_model,
             "messages": [m.model_dump() for m in messages],
-            "temperature": self.settings.ai_temperature,
-            "max_tokens": self.settings.ai_max_tokens,
+            "temperature": temperature if temperature is not None else self.settings.ai_temperature,
+            "max_tokens": max_tokens if max_tokens is not None else self.settings.ai_max_tokens,
             "stream": stream,
+            # 显式关闭思考模式,加速分类/评估类简单任务
+            "reasoning": {"effort": "none"},
+            "enable_thinking": False,
         }
         response = httpx.post(f"{self.settings.openai_base_url}/chat/completions", headers=headers, json=payload, timeout=60)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
 
-    async def _openai_stream(self, messages: list[AiMessage]):
+    async def _openai_stream(self, messages: list[AiMessage], max_tokens: int | None = None, temperature: float | None = None):
         headers = {"Authorization": f"Bearer {self.settings.openai_api_key}"}
         payload = {
             "model": self.settings.openai_model,
             "messages": [m.model_dump() for m in messages],
-            "temperature": self.settings.ai_temperature,
-            "max_tokens": self.settings.ai_max_tokens,
+            "temperature": temperature if temperature is not None else self.settings.ai_temperature,
+            "max_tokens": max_tokens if max_tokens is not None else self.settings.ai_max_tokens,
             "stream": True,
+            "reasoning": {"effort": "none"},
+            "enable_thinking": False,
         }
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream("POST", f"{self.settings.openai_base_url}/chat/completions", headers=headers, json=payload) as response:

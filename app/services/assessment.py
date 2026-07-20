@@ -25,7 +25,7 @@ class PsychologicalAssessmentService:
         if has_high_risk_signal(text):
             return PsychologyAssessment(EmotionLabel.HIGH_RISK, 4.0, RiskLevel.HIGH, 0.95, "检测到明确高风险表达")
         try:
-            raw = self.ai.complete(PromptTemplates.psychology_prompt(history or [], text))
+            raw = self.ai.complete(PromptTemplates.psychology_prompt(history or [], text), max_tokens=200, temperature=0)
             start = raw.find("{")
             end = raw.rfind("}")
             data = json.loads(raw[start:end + 1] if start >= 0 and end > start else raw)
