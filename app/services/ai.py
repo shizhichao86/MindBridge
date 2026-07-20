@@ -146,7 +146,10 @@ class AiClient:
                     if raw == "[DONE]":
                         break
                     data = json.loads(raw)
-                    token = data["choices"][0].get("delta", {}).get("content", "")
+                    choices = data.get("choices") or []
+                    if not choices:
+                        continue
+                    token = choices[0].get("delta", {}).get("content", "")
                     if token:
                         yield token
 
