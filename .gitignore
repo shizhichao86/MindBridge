@@ -1,0 +1,48 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+*token*
+
+# IDE / 编辑器
+.idea/
+.vscode/
+.claude/
+
+# 构建产物
+dist/
+
+# 运行时数据(数据库 / Chroma / 台账 / 日志 / 上传)
+.uploads/
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.xlsx
+*.log
+
+# 测试与输出
+target/
+
+# 模型权重(大文件,防止误入库)
+*.gguf
+*.gguf.zip
+
+# 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 系统
+.DS_Store
