@@ -1,7 +1,7 @@
 # 面试导向学习路线图
 
 > 文档定位：面向面试准备的 5-7 天学习计划,每个阶段标注面试权重和验证方式。
-> 面试权重：本文档在面试准备场景中权重 **中**（20%），核心知识沉淀在 docs/07 问答集中。
+> 面试权重：本文档在面试准备场景中权重 **中**（20%），核心知识沉淀在 [02_PROJECT_QNA.md](./02_PROJECT_QNA.md) 问答集中。
 
 ---
 
@@ -218,7 +218,7 @@ app/services/tools.py         → ToolOrchestrationService (Excel/案例/告警)
 
 ### 行动清单
 
-1. **通读 docs/07_INTERVIEW_QNA.md**，逐题在心里过一遍回答要点
+1. **通读 [02_PROJECT_QNA.md](./02_PROJECT_QNA.md)**，逐题在心里过一遍回答要点
 2. **选 10 个高频问题练习口述**（推荐 Q1/Q2/Q5/Q9/Q10/Q11/Q15/Q20/Q22/Q28）
 3. **读 tests/*.py**：理解 `AI_PROVIDER=mock` 下的测试隔离策略
 4. **读 harness/runner.py**：理解工程自检 6 套件

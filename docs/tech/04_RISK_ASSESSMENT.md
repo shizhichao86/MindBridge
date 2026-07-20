@@ -1,7 +1,7 @@
 <!--
   文档定位: 心理风险评估硬守卫 —— 多层防御架构的完整拆解
   面试权重: ★★★★☆ (仅次于多智能体运行时,是系统安全性的核心差异化卖点)
-  前置阅读: docs/01_ARCHITECTURE_OVERVIEW.md, docs/02_AGENT_RUNTIME.md
+  前置阅读: docs/tech/01_ARCHITECTURE.md, docs/tech/02_AGENT_RUNTIME.md
 -->
 
 # 心理风险评估硬守卫

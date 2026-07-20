@@ -1,7 +1,7 @@
 <!--
   文档定位: 工具队列、治理与 MCP 双模 —— 从评估结果到辅导员通知的完整执行链路
   面试权重: ★★★☆☆ (工程实践亮点,双模设计体现架构灵活性)
-  前置阅读: docs/01_ARCHITECTURE_OVERVIEW.md, docs/04_RISK_ASSESSMENT.md
+  前置阅读: docs/tech/01_ARCHITECTURE.md, docs/tech/04_RISK_ASSESSMENT.md
 -->
 
 # 工具队列、治理与 MCP 双模

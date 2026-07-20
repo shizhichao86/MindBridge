@@ -41,7 +41,7 @@
 | ContextAgent | 上下文 | 条件激活（非闲聊/非低风险），加载历史+RAG+技能上下文 |
 | ResponseAgent | 生成回复 | normal_chat vs support 双模式 prompt 组装，提交 Safety 审查 |
 
-> 📖 详见 [`docs/02_AGENT_RUNTIME.md`](docs/02_AGENT_RUNTIME.md) — 多智能体运行时深度分析
+> 📖 详见 [`docs/tech/02_AGENT_RUNTIME.md`](docs/tech/02_AGENT_RUNTIME.md) — 多智能体运行时深度分析
 
 ## 技术栈
 
@@ -153,7 +153,7 @@ docker compose up -d --build
 AI_PROVIDER=ollama ./scripts/run-dev.sh
 ```
 
-> 📖 **学习导航**：配套学习文档见 [`docs/`](docs/) 目录。推荐按 [`docs/06_LEARNING_PATH.md`](docs/06_LEARNING_PATH.md) 的 10 天路线学习，面试前回顾 [`docs/07_INTERVIEW_QNA.md`](docs/07_INTERVIEW_QNA.md) 的 30 道问答。
+> 📖 **学习导航**：技术文档见 [`docs/tech/`](docs/tech/) 目录，求职准备见 [`docs/career/`](docs/career/) 目录。推荐按 [`docs/career/01_ROADMAP.md`](docs/career/01_ROADMAP.md) 的学习路线，面试前回顾 [`docs/career/02_PROJECT_QNA.md`](docs/career/02_PROJECT_QNA.md) 的 30 道问答。
 
 ## 安装依赖
 

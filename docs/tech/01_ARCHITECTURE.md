@@ -119,7 +119,7 @@ harness.run(user, request) 完成（同步阻塞）：
 
 **注意**：`.env.example` 默认 `AGENT_FRAMEWORK=langgraph` 是**历史值**，`agent_framework_status()` 会返回 `fallback=true`，但运行时始终走事件驱动（`app/agents/factory.py:19-28`）。
 
-详见 `docs/02_AGENT_RUNTIME.md`。
+详见 `docs/tech/02_AGENT_RUNTIME.md`。
 
 ### 3.4 服务层（7 个核心服务）
 
