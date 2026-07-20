@@ -9,6 +9,7 @@ from app.agents.factory import create_agent_runtime
 from app.agents.result import AgentStep
 from app.core.config import Settings
 from app.core.enums import IntentType, MessageRole
+from app.core.logging import get_logger, timed
 from app.models.entities import ChatMessage, ChatSession, PsychologicalReport, UserAccount
 from app.schemas.dtos import AiMessage, ChatRequest
 from app.services.assessment import PsychologyAssessment
@@ -18,6 +19,8 @@ from app.services.memory import RedisShortTermMemoryStore
 from app.services.privacy import PrivacySanitizer
 from app.services.tool_queue import ToolQueueService
 from app.services.trace import AgentTraceService
+
+logger = get_logger("agents.harness")
 
 
 @dataclass
@@ -64,10 +67,16 @@ class MindBridgeAgentHarness:
         original_input = request.message.strip()
         model_input = self.privacy.sanitize(original_input)
         session = self._resolve_session(user, request.sessionId, original_input)
-        agent_run = create_agent_runtime(self.db, self.settings).run(user, session, original_input, model_input)
+        with timed("Agent 协作(agent_runtime.run)", logger=logger):
+            agent_run = create_agent_runtime(self.db, self.settings).run(user, session, original_input, model_input)
+
+        logger.info("意图=%s 风险=%s 步数=%d 知识=%d",
+                     agent_run.intent.value, agent_run.risk_level or "-",
+                     len(agent_run.steps), len(agent_run.retrieved_knowledge))
         self.save_message(user, session, MessageRole.USER, original_input)
 
-        report = self._create_report(user, session, original_input, agent_run)
+        with timed("报告+Trace 落库", logger=logger):
+            report = self._create_report(user, session, original_input, agent_run)
         risk_level = report.risk_level if report is not None else None
         trace = AgentTraceService(self.db).save_run(
             user=user,

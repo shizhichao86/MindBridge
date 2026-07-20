@@ -12,6 +12,9 @@ from app.agents.events import (
     PRIORITY_ORDER,
     TaskPriority,
 )
+from app.core.logging import get_logger, timed
+
+logger = get_logger("agents.coordinator")
 from app.agents.registry import AgentCapability, AgentRegistry
 from app.core.config import Settings
 from app.core.enums import IntentType, RiskLevel
@@ -66,9 +69,11 @@ class EventDrivenCoordinator:
                         metadata={"confidence": candidate.decision.confidence},
                     )
                 )
-                result = candidate.agent.act(current_task, board)
-                board = board.apply_turn_result(current_task, candidate.agent.profile.name, result)
-                claim_counts[candidate.agent.profile.name] += 1
+                agent_name = candidate.agent.profile.name
+                with timed(f"Agent.{agent_name}.act", logger=logger):
+                    result = candidate.agent.act(current_task, board)
+                board = board.apply_turn_result(current_task, agent_name, result)
+                claim_counts[agent_name] += 1
             board = self._derive_missing_work(board)
             board = self._try_accept_final(board)
             if board.final_artifact_id:
