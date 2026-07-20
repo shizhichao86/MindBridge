@@ -281,7 +281,11 @@ class KnowledgeService:
                 missing_indexes.append(index)
                 missing_texts.append(chunk.content)
         if missing_texts:
-            new_embeddings = self.vector_store.embed_texts(missing_texts)
+            batch_size = 20
+            new_embeddings: list[list[float]] = []
+            for start in range(0, len(missing_texts), batch_size):
+                batch = missing_texts[start : start + batch_size]
+                new_embeddings.extend(self.vector_store.embed_texts(batch))
             for index, embedding in zip(missing_indexes, new_embeddings):
                 embeddings[index] = embedding
         resolved = [embedding for embedding in embeddings if embedding is not None]
