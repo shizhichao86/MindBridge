@@ -24,8 +24,11 @@ class PsychologicalAssessmentService:
     def assess(self, text: str, history: list[AiMessage] | None = None) -> PsychologyAssessment:
         if has_high_risk_signal(text):
             return PsychologyAssessment(EmotionLabel.HIGH_RISK, 4.0, RiskLevel.HIGH, 0.95, "检测到明确高风险表达")
+        # 短无害文本跳过 LLM 评估,节省 5-6s
+        if not has_consult_signal(text) and len(text) <= 15:
+            return PsychologyAssessment(EmotionLabel.NORMAL, 0.0, RiskLevel.LOW, 0.85, "短文本,无明显风险信号")
         try:
-            raw = self.ai.complete(PromptTemplates.psychology_prompt(history or [], text), max_tokens=200, temperature=0)
+            raw = self.ai.complete(PromptTemplates.psychology_prompt(history or [], text))
             start = raw.find("{")
             end = raw.rfind("}")
             data = json.loads(raw[start:end + 1] if start >= 0 and end > start else raw)

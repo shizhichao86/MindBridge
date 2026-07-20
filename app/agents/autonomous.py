@@ -34,6 +34,9 @@ GENERAL_TASK_WORDS = [
     "java", "python", "javascript", "代码", "编程", "程序", "算法", "数据库", "spring", "maven",
     "前端", "后端", "项目", "接口", "bug", "报错", "作业", "论文", "翻译", "总结", "解释",
     "怎么写", "如何", "是什么", "为什么", "给我", "帮我", "推荐", "查询", "天气", "路线",
+    # 日常问候/简短闲聊,大概率是 CHAT,先关键词判定不调 LLM
+    "你好", "早", "晚安", "嗨", "hello", "hi", "谢谢", "感谢", "再见", "bye",
+    "在吗", "能聊聊吗", "有空吗", "请问",
 ]
 
 
@@ -167,7 +170,7 @@ class UnderstandingAgent(BaseAutonomousAgent):
                 *PromptTemplates.intent_prompt([], text),
                 AiMessage(role="system", content=f"{self.profile.system_prompt}\n私有记忆：\n{memory_context or '无'}"),
             ]
-            label = self.client().complete(messages, max_tokens=10, temperature=0).upper()
+            label = self.client().complete(messages).upper()
             if "RISK" in label:
                 return IntentType.RISK
             if "CONSULT" in label:
@@ -393,7 +396,7 @@ class ContextAgent(BaseAutonomousAgent):
 
     def _rewrite_query(self, memory_brief: str, model_input: str) -> str:
         try:
-            query = self.client().complete(max_tokens=30, temperature=0, messages=[
+            query = self.client().complete([
                 AiMessage(role="system", content=f"{self.profile.system_prompt}\n把学生输入改写成适合检索校园心理知识库的中文查询词，只输出查询词。"),
                 AiMessage(role="user", content=f"记忆摘要：\n{memory_brief}\n\n当前输入：\n{model_input}"),
             ]).strip()

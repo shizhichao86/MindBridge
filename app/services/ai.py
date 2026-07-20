@@ -128,9 +128,8 @@ class AiClient:
             "temperature": temperature if temperature is not None else self.settings.ai_temperature,
             "max_tokens": max_tokens if max_tokens is not None else self.settings.ai_max_tokens,
             "stream": stream,
-            # 显式关闭思考模式,加速分类/评估类简单任务
-            "reasoning": {"effort": "none"},
             "enable_thinking": False,
+            "reasoning": {"effort": "none"},
         }
         response = httpx.post(f"{self.settings.openai_base_url}/chat/completions", headers=headers, json=payload, timeout=60)
         response.raise_for_status()
@@ -144,8 +143,8 @@ class AiClient:
             "temperature": temperature if temperature is not None else self.settings.ai_temperature,
             "max_tokens": max_tokens if max_tokens is not None else self.settings.ai_max_tokens,
             "stream": True,
-            "reasoning": {"effort": "none"},
             "enable_thinking": False,
+            "reasoning": {"effort": "none"},
         }
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream("POST", f"{self.settings.openai_base_url}/chat/completions", headers=headers, json=payload) as response:
